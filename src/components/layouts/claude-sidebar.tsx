@@ -4,6 +4,20 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useConversations, useCreateConversation } from '@/modules/chat/hooks/use-conversations';
+import {
+  useRenameConversation,
+  usePinConversation,
+  useArchiveConversation,
+  useDeleteConversation,
+} from '@/modules/chat/hooks/use-conversation-actions';
+import {
+  useFolders,
+  useCreateFolder,
+  useDeleteFolder,
+  useMoveToFolder,
+} from '@/modules/folders/hooks/use-folders';
+import { RenameConversationDialog } from '@/components/dialogs/rename-conversation-dialog';
+import { CreateFolderDialog } from '@/components/dialogs/create-folder-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -14,6 +28,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { LoadingSpinner } from '@/components/common/loading-spinner';
@@ -36,9 +53,13 @@ export function ClaudeSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { data: conversations, isLoading } = useConversations();
+  const { data: folders } = useFolders();
   const createConversation = useCreateConversation();
+  const createFolderMutation = useCreateFolder();
   const [searchQuery, setSearchQuery] = useState('');
   const [showArchived, setShowArchived] = useState(false);
+  const [createFolderOpen, setCreateFolderOpen] = useState(false);
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
 
   const handleNewChat = async () => {
     try {
@@ -49,15 +70,38 @@ export function ClaudeSidebar() {
     }
   };
 
+  const handleCreateFolder = (name: string, color?: string) => {
+    createFolderMutation.mutate({ name, color }, {
+      onSuccess: () => setCreateFolderOpen(false),
+    });
+  };
+
+  const toggleFolder = (folderId: string) => {
+    setExpandedFolders((prev) => {
+      const next = new Set(prev);
+      if (next.has(folderId)) {
+        next.delete(folderId);
+      } else {
+        next.add(folderId);
+      }
+      return next;
+    });
+  };
+
   // Filter conversations by search
   const filteredConversations = conversations?.filter((conv) =>
     conv.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Group conversations
-  const pinnedConversations = filteredConversations?.filter((c) => c.isPinned && !c.isArchived);
-  const recentConversations = filteredConversations?.filter((c) => !c.isPinned && !c.isArchived);
+  const pinnedConversations = filteredConversations?.filter((c) => c.isPinned && !c.isArchived && !c.folderId);
+  const recentConversations = filteredConversations?.filter((c) => !c.isPinned && !c.isArchived && !c.folderId);
   const archivedConversations = filteredConversations?.filter((c) => c.isArchived);
+
+  // Get conversations by folder
+  const getConversationsInFolder = (folderId: string) => {
+    return filteredConversations?.filter((c) => c.folderId === folderId && !c.isArchived) || [];
+  };
 
   // Group by date
   const groupByDate = (convs: typeof conversations) => {
@@ -109,11 +153,20 @@ export function ClaudeSidebar() {
 
   return (
     <div className="flex h-full w-64 flex-col border-r bg-muted/10">
-      {/* New Chat Button */}
-      <div className="p-2">
+      {/* New Chat & Create Folder Buttons */}
+      <div className="p-2 space-y-2">
         <Button onClick={handleNewChat} className="w-full gap-2" size="sm">
           <MessageSquarePlus className="h-4 w-4" />
           New chat
+        </Button>
+        <Button
+          onClick={() => setCreateFolderOpen(true)}
+          variant="outline"
+          className="w-full gap-2"
+          size="sm"
+        >
+          <Folder className="h-4 w-4" />
+          New folder
         </Button>
       </div>
 
@@ -153,8 +206,47 @@ export function ClaudeSidebar() {
                       key={conv.id}
                       conversation={conv}
                       isActive={pathname === `/chat/${conv.id}`}
+                      folders={folders}
                     />
                   ))}
+                </div>
+              )}
+
+              {/* Folders */}
+              {folders && folders.length > 0 && (
+                <div className="mb-4">
+                  {folders.map((folder) => {
+                    const folderConvs = getConversationsInFolder(folder.id);
+                    if (folderConvs.length === 0 && !searchQuery) return null;
+
+                    const isExpanded = expandedFolders.has(folder.id);
+
+                    return (
+                      <div key={folder.id} className="mb-2">
+                        <button
+                          onClick={() => toggleFolder(folder.id)}
+                          className="mb-1 flex w-full items-center gap-1 px-2 text-xs font-semibold text-muted-foreground hover:text-foreground"
+                        >
+                          {isExpanded ? (
+                            <ChevronDown className="h-3 w-3" />
+                          ) : (
+                            <ChevronRight className="h-3 w-3" />
+                          )}
+                          <Folder className="h-3 w-3" />
+                          <span className="flex-1 text-left truncate">{folder.name}</span>
+                          <span className="text-xs">({folderConvs.length})</span>
+                        </button>
+                        {isExpanded && folderConvs.map((conv) => (
+                          <ConversationItem
+                            key={conv.id}
+                            conversation={conv}
+                            isActive={pathname === `/chat/${conv.id}`}
+                            folders={folders}
+                          />
+                        ))}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
@@ -169,6 +261,7 @@ export function ClaudeSidebar() {
                       key={conv.id}
                       conversation={conv}
                       isActive={pathname === `/chat/${conv.id}`}
+                      folders={folders}
                     />
                   ))}
                 </div>
@@ -195,6 +288,7 @@ export function ClaudeSidebar() {
                         key={conv.id}
                         conversation={conv}
                         isActive={pathname === `/chat/${conv.id}`}
+                        folders={folders}
                       />
                     ))}
                 </div>
@@ -210,6 +304,13 @@ export function ClaudeSidebar() {
           )}
         </div>
       </ScrollArea>
+
+      <CreateFolderDialog
+        open={createFolderOpen}
+        onOpenChange={setCreateFolderOpen}
+        onCreate={handleCreateFolder}
+        isLoading={createFolderMutation.isPending}
+      />
     </div>
   );
 }
@@ -218,67 +319,145 @@ export function ClaudeSidebar() {
 function ConversationItem({
   conversation,
   isActive,
+  folders,
 }: {
   conversation: any;
   isActive: boolean;
+  folders?: any[];
 }) {
   const [isHovered, setIsHovered] = useState(false);
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+
+  const renameMutation = useRenameConversation();
+  const pinMutation = usePinConversation();
+  const archiveMutation = useArchiveConversation();
+  const deleteMutation = useDeleteConversation();
+  const moveToFolderMutation = useMoveToFolder();
+
+  const handleRename = (id: string, title: string) => {
+    renameMutation.mutate({ id, title }, {
+      onSuccess: () => setRenameDialogOpen(false),
+    });
+  };
+
+  const handlePin = (e: Event) => {
+    e.preventDefault();
+    pinMutation.mutate(conversation.id);
+  };
+
+  const handleArchive = (e: Event) => {
+    e.preventDefault();
+    archiveMutation.mutate(conversation.id);
+  };
+
+  const handleDelete = (e: Event) => {
+    e.preventDefault();
+    if (confirm('Are you sure you want to delete this conversation?')) {
+      deleteMutation.mutate(conversation.id);
+    }
+  };
+
+  const handleMoveToFolder = (folderId: string | null) => {
+    moveToFolderMutation.mutate({
+      conversationId: conversation.id,
+      folderId,
+    });
+  };
 
   return (
-    <div
-      className="group relative"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      <Link
-        href={`/chat/${conversation.id}`}
-        className={cn(
-          'flex items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors',
-          isActive
-            ? 'bg-accent text-accent-foreground'
-            : 'hover:bg-accent/50 hover:text-accent-foreground'
-        )}
+    <>
+      <div
+        className="group relative"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       >
-        <span className="flex-1 truncate">{conversation.title}</span>
-        {conversation.isPinned && <Pin className="h-3 w-3 flex-shrink-0 text-muted-foreground" />}
-      </Link>
+        <Link
+          href={`/chat/${conversation.id}`}
+          className={cn(
+            'flex items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors',
+            isActive
+              ? 'bg-accent text-accent-foreground'
+              : 'hover:bg-accent/50 hover:text-accent-foreground'
+          )}
+        >
+          <span className="flex-1 truncate">{conversation.title}</span>
+          {conversation.isPinned && <Pin className="h-3 w-3 flex-shrink-0 text-muted-foreground" />}
+        </Link>
 
-      {/* Actions Menu */}
-      {(isHovered || isActive) && (
-        <div className="absolute right-1 top-1">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0 hover:bg-accent"
-                onClick={(e) => e.preventDefault()}
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem>
-                <Pencil className="mr-2 h-4 w-4" />
-                Rename
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Pin className="mr-2 h-4 w-4" />
-                {conversation.isPinned ? 'Unpin' : 'Pin'}
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Archive className="mr-2 h-4 w-4" />
-                {conversation.isArchived ? 'Unarchive' : 'Archive'}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive">
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      )}
-    </div>
+        {/* Actions Menu */}
+        {(isHovered || isActive) && (
+          <div className="absolute right-1 top-1">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 hover:bg-accent"
+                  onClick={(e) => e.preventDefault()}
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onSelect={() => setRenameDialogOpen(true)}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Rename
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={handlePin}>
+                  <Pin className="mr-2 h-4 w-4" />
+                  {conversation.isPinned ? 'Unpin' : 'Pin'}
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleArchive}>
+                  <Archive className="mr-2 h-4 w-4" />
+                  {conversation.isArchived ? 'Unarchive' : 'Archive'}
+                </DropdownMenuItem>
+                {folders && folders.length > 0 && (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <Folder className="mr-2 h-4 w-4" />
+                      Move to folder
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                      {conversation.folderId && (
+                        <>
+                          <DropdownMenuItem onSelect={() => handleMoveToFolder(null)}>
+                            Remove from folder
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                        </>
+                      )}
+                      {folders.map((folder) => (
+                        <DropdownMenuItem
+                          key={folder.id}
+                          onSelect={() => handleMoveToFolder(folder.id)}
+                          disabled={conversation.folderId === folder.id}
+                        >
+                          <Folder className="mr-2 h-4 w-4" />
+                          {folder.name}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-destructive" onSelect={handleDelete}>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
+      </div>
+
+      <RenameConversationDialog
+        open={renameDialogOpen}
+        onOpenChange={setRenameDialogOpen}
+        conversationId={conversation.id}
+        currentTitle={conversation.title}
+        onRename={handleRename}
+        isLoading={renameMutation.isPending}
+      />
+    </>
   );
 }

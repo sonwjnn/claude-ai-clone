@@ -5,7 +5,7 @@ import rehypeRaw from 'rehype-raw';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { MessageWithArtifacts } from '../../types/chat.types';
-import { ArtifactViewer } from '@/modules/artifacts/ui/components/artifact-viewer';
+import { ArtifactCard } from '@/modules/artifacts/ui/components/artifact-card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -137,7 +137,7 @@ export function MessageBubble({ message, onRegenerate, onEdit, onRate }: Message
           {message.artifacts && message.artifacts.length > 0 && (
             <div className="space-y-4">
               {message.artifacts.map((artifact) => (
-                <ArtifactViewer key={artifact.id} artifact={artifact} />
+                <ArtifactCard key={artifact.id} artifact={artifact} />
               ))}
             </div>
           )}

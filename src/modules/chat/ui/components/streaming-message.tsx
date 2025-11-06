@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils/cn';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { ArtifactViewer } from '@/modules/artifacts/ui/components/artifact-viewer';
+import { ArtifactCard } from '@/modules/artifacts/ui/components/artifact-card';
 import { Bot } from 'lucide-react';
 import { Artifact } from '@/lib/db/schema';
 
@@ -30,7 +30,7 @@ export function StreamingMessage({ content, artifacts }: StreamingMessageProps) 
         {artifacts.length > 0 && (
           <div className="space-y-4 mt-4">
             {artifacts.map((artifact, index) => (
-              <ArtifactViewer key={`streaming-${index}`} artifact={artifact} />
+              <ArtifactCard key={`streaming-${index}`} artifact={artifact} />
             ))}
           </div>
         )}
