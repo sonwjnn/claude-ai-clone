@@ -44,6 +44,11 @@ const config: Config = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
+        claude: {
+          orange: 'hsl(var(--claude-orange))',
+          cream: 'hsl(var(--claude-cream))',
+          hover: 'hsl(var(--claude-hover))',
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',

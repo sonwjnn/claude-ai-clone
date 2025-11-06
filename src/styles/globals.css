@@ -4,48 +4,56 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 43 47% 95%;
+    --foreground: 27 20% 15%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 27 20% 15%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
+    --popover-foreground: 27 20% 15%;
+    --primary: 27 55% 48%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 38 40% 88%;
+    --secondary-foreground: 27 20% 15%;
+    --muted: 38 30% 90%;
+    --muted-foreground: 27 15% 45%;
+    --accent: 35 45% 85%;
+    --accent-foreground: 27 20% 15%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 38 25% 88%;
+    --input: 38 25% 88%;
+    --ring: 27 55% 48%;
+    --radius: 0.75rem;
+
+    --claude-orange: 27 55% 48%;
+    --claude-cream: 43 47% 95%;
+    --claude-hover: 38 40% 92%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    --background: 27 15% 9%;
+    --foreground: 43 20% 95%;
+    --card: 27 15% 12%;
+    --card-foreground: 43 20% 95%;
+    --popover: 27 15% 12%;
+    --popover-foreground: 43 20% 95%;
+    --primary: 27 60% 55%;
+    --primary-foreground: 27 15% 9%;
+    --secondary: 27 15% 15%;
+    --secondary-foreground: 43 20% 95%;
+    --muted: 27 12% 18%;
+    --muted-foreground: 43 10% 65%;
+    --accent: 27 15% 20%;
+    --accent-foreground: 43 20% 95%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 43 20% 95%;
+    --border: 27 12% 20%;
+    --input: 27 12% 20%;
+    --ring: 27 60% 55%;
+
+    --claude-orange: 27 60% 55%;
+    --claude-dark-bg: 27 15% 9%;
+    --claude-hover: 27 12% 22%;
   }
 }
 
@@ -53,7 +61,43 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  ::-webkit-scrollbar {
+    @apply w-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/20 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/30;
+  }
+}
+
+@layer components {
+  .message-user {
+    @apply bg-primary/10 rounded-2xl p-4;
+  }
+
+  .message-assistant {
+    @apply bg-transparent rounded-2xl p-4;
+  }
+
+  .btn-claude {
+    @apply bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg px-4 py-2 transition-colors;
+  }
+
+  .input-claude {
+    @apply bg-card border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 transition-all;
   }
 }
