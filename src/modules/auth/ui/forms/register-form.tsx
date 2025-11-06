@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { registerSchema, type RegisterInput } from '../../schemas/auth.schema';
-import { register as registerUser } from '../../api/register';
+import { signUp } from '@/lib/auth/auth-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,15 +26,21 @@ export function RegisterForm() {
   const onSubmit = async (data: RegisterInput) => {
     try {
       setError(null);
-      await registerUser({
-        name: data.name,
+      const result = await signUp.email({
         email: data.email,
         password: data.password,
+        name: data.name,
       });
-      router.push('/chat');
+
+      if (result.error) {
+        setError(result.error.message || 'Failed to register');
+        return;
+      }
+
+      router.push('/');
       router.refresh();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to register');
+      setError(err.message || 'Failed to register');
     }
   };
 

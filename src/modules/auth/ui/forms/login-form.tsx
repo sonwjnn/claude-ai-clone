@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { loginSchema, type LoginInput } from '../../schemas/auth.schema';
-import { login } from '../../api/login';
+import { signIn } from '@/lib/auth/auth-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,11 +26,20 @@ export function LoginForm() {
   const onSubmit = async (data: LoginInput) => {
     try {
       setError(null);
-      await login(data);
-      router.push('/chat');
+      const result = await signIn.email({
+        email: data.email,
+        password: data.password,
+      });
+
+      if (result.error) {
+        setError(result.error.message || 'Failed to login');
+        return;
+      }
+
+      router.push('/');
       router.refresh();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to login');
+      setError(err.message || 'Failed to login');
     }
   };
 
