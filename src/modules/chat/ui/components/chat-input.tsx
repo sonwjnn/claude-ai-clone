@@ -1,11 +1,10 @@
 'use client';
 
-import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { messageSchema, type MessageInput } from '../../schemas/message.schema';
-import { useCreateMessage } from '../../hooks/use-messages';
 import { useCreateConversation } from '../../hooks/use-conversations';
+import { useChatStream } from '../../hooks/use-chat-stream';
 import { useChatStore } from '../../stores/chat-store';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,14 +13,20 @@ import { useRouter } from 'next/navigation';
 
 interface ChatInputProps {
   conversationId?: string;
+  onStreamingChange?: (isStreaming: boolean) => void;
 }
 
-export function ChatInput({ conversationId }: ChatInputProps) {
+export function ChatInput({ conversationId, onStreamingChange }: ChatInputProps) {
   const router = useRouter();
   const { setCurrentConversationId } = useChatStore();
-  const createMessage = useCreateMessage();
   const createConversation = useCreateConversation();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { sendMessage, isStreaming } = useChatStream({
+    conversationId: conversationId || '',
+    onComplete: () => {
+      onStreamingChange?.(false);
+    },
+  });
 
   const {
     register,
@@ -34,8 +39,6 @@ export function ChatInput({ conversationId }: ChatInputProps) {
 
   const onSubmit = async (data: MessageInput) => {
     try {
-      setIsSubmitting(true);
-
       let currentConvId = conversationId;
 
       // If no conversation exists, create one
@@ -44,27 +47,19 @@ export function ChatInput({ conversationId }: ChatInputProps) {
         currentConvId = newConv.id;
         setCurrentConversationId(currentConvId);
         router.push(`/chat/${currentConvId}`);
+
+        // Wait a bit for navigation
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
-      // Send user message
-      await createMessage.mutateAsync({
-        content: data.content,
-        conversationId: currentConvId,
-      });
-
-      // Simulate AI response (in a real app, this would call an AI API)
-      setTimeout(async () => {
-        await createMessage.mutateAsync({
-          content: `I received your message: "${data.content}". This is a simulated response. In a production app, this would be an actual AI response.`,
-          conversationId: currentConvId!,
-        });
-      }, 1000);
+      // Send message with streaming
+      onStreamingChange?.(true);
+      await sendMessage(data.content);
 
       reset();
     } catch (error) {
       console.error('Failed to send message:', error);
-    } finally {
-      setIsSubmitting(false);
+      onStreamingChange?.(false);
     }
   };
 
@@ -73,8 +68,9 @@ export function ChatInput({ conversationId }: ChatInputProps) {
       <div className="flex gap-2">
         <Textarea
           {...register('content')}
-          placeholder="Type your message..."
+          placeholder="Type your message... (Try: 'Create a React component' or 'Show me HTML code')"
           className="min-h-[60px] max-h-[200px]"
+          disabled={isStreaming}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
@@ -82,7 +78,7 @@ export function ChatInput({ conversationId }: ChatInputProps) {
             }
           }}
         />
-        <Button type="submit" size="icon" disabled={isSubmitting}>
+        <Button type="submit" size="icon" disabled={isStreaming}>
           <Send className="h-4 w-4" />
         </Button>
       </div>
