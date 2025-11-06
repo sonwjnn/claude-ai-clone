@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
 import { messages, conversations, artifacts } from '@/lib/db/schema';
-import { getSession } from '@/lib/auth/session';
+import { auth } from '@/lib/auth/auth';
 import { eq, and } from 'drizzle-orm';
 
 export const runtime = 'edge';
@@ -211,8 +211,11 @@ Try asking me to create:
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getSession(req);
-    if (!session) {
+    const session = await auth.api.getSession({
+      headers: await import('next/headers').then((mod) => mod.headers()),
+    });
+
+    if (!session?.user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' },
@@ -233,7 +236,7 @@ export async function POST(req: NextRequest) {
     const [conversation] = await db
       .select()
       .from(conversations)
-      .where(and(eq(conversations.id, conversationId), eq(conversations.userId, session.userId)));
+      .where(and(eq(conversations.id, conversationId), eq(conversations.userId, session.user.id)));
 
     if (!conversation) {
       return new Response(JSON.stringify({ error: 'Conversation not found' }), {
@@ -248,7 +251,7 @@ export async function POST(req: NextRequest) {
       .values({
         content,
         conversationId,
-        userId: session.userId,
+        userId: session.user.id,
         role: 'user',
       })
       .returning();
@@ -278,7 +281,7 @@ export async function POST(req: NextRequest) {
           .values({
             content: aiResponse.text,
             conversationId,
-            userId: session.userId,
+            userId: session.user.id,
             role: 'assistant',
           })
           .returning();
@@ -294,7 +297,7 @@ export async function POST(req: NextRequest) {
                 language: artifact.language,
                 content: artifact.content,
                 messageId: assistantMessage.id,
-                userId: session.userId,
+                userId: session.user.id,
               })
               .returning();
 

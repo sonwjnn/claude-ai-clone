@@ -1,20 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { conversations, messages } from '@/lib/db/schema';
-import { getSession } from '@/lib/auth/session';
+import { auth } from '@/lib/auth/auth';
 import { eq, desc } from 'drizzle-orm';
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await getSession(req);
-    if (!session) {
+    const session = await auth.api.getSession({
+      headers: await import('next/headers').then((mod) => mod.headers()),
+    });
+
+    if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const userConversations = await db
       .select()
       .from(conversations)
-      .where(eq(conversations.userId, session.userId))
+      .where(eq(conversations.userId, session.user.id))
       .orderBy(desc(conversations.updatedAt));
 
     // Get last message for each conversation
@@ -43,8 +46,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getSession(req);
-    if (!session) {
+    const session = await auth.api.getSession({
+      headers: await import('next/headers').then((mod) => mod.headers()),
+    });
+
+    if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -55,7 +61,7 @@ export async function POST(req: NextRequest) {
       .insert(conversations)
       .values({
         title: title || 'New Chat',
-        userId: session.userId,
+        userId: session.user.id,
       })
       .returning();
 

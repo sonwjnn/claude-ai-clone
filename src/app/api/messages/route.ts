@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { messages, conversations, artifacts } from '@/lib/db/schema';
-import { getSession } from '@/lib/auth/session';
+import { auth } from '@/lib/auth/auth';
 import { eq, and, desc } from 'drizzle-orm';
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await getSession(req);
-    if (!session) {
+    const session = await auth.api.getSession({
+      headers: await import('next/headers').then((mod) => mod.headers()),
+    });
+
+    if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -25,7 +28,7 @@ export async function GET(req: NextRequest) {
       .where(
         and(
           eq(conversations.id, conversationId),
-          eq(conversations.userId, session.userId)
+          eq(conversations.userId, session.user.id)
         )
       );
 
@@ -71,8 +74,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getSession(req);
-    if (!session) {
+    const session = await auth.api.getSession({
+      headers: await import('next/headers').then((mod) => mod.headers()),
+    });
+
+    if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -90,7 +96,7 @@ export async function POST(req: NextRequest) {
       .where(
         and(
           eq(conversations.id, conversationId),
-          eq(conversations.userId, session.userId)
+          eq(conversations.userId, session.user.id)
         )
       );
 
@@ -104,7 +110,7 @@ export async function POST(req: NextRequest) {
       .values({
         content,
         conversationId,
-        userId: session.userId,
+        userId: session.user.id,
         role: 'user',
       })
       .returning();
